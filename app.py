@@ -71,7 +71,7 @@ def main():
     
     user_text = st.text_area("📝 أدخل السكربت الخاص بك:", height=150)
     
-    if st.button("🎥 توليد الفيديو", type="primary"):
+    if st.button("🎥 Generate Video", type="primary"):
         if not user_text.strip():
             st.error("❌ الرجاء إدخال النص أولاً.")
             return
