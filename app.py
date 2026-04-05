@@ -1,62 +1,65 @@
 import streamlit as st
-import os
+from gtts import gTTS
+from moviepy.editor import ImageClip, concatenate_videoclips, AudioFileClip, CompositeAudioClip
 import tempfile
-import subprocess
-from gtts import gTTS  # لتحويل النص لصوت
+import os
 
-st.title("Text-to-Video Generator 🎬")
+st.title("Text + Audio + Images → Video Generator 🎬")
 
-# رفع الصور (اختياري)
+# رفع الملفات
 images = st.file_uploader("Upload Images (optional)", accept_multiple_files=True, type=["jpg","png","jpeg"])
-
-# إدخال النص
-script = st.text_area("Write your script here:")
+audio_file = st.file_uploader("Upload Audio (optional)", type=["mp3","wav"])
+script = st.text_area("Write your script here (optional)")
 
 if st.button("Generate Video"):
-    if script or images:
+    if not (images or audio_file or script):
+        st.warning("Please provide at least an image, audio, or script!")
+    else:
         temp_dir = tempfile.mkdtemp()
 
-        # تحويل النص لصوت
-        audio_path = os.path.join(temp_dir, "audio.mp3")
-        tts = gTTS(text=script, lang='en')  # ممكن تغير 'en' لـ 'ar' للعربي
-        tts.save(audio_path)
+        # إعداد الصوت النهائي
+        audio_clips = []
 
-        # حفظ الصور
-        image_paths = []
-        if images:
-            for i, img in enumerate(images):
-                ext = os.path.splitext(img.name)[1]
-                path = os.path.join(temp_dir, f"{i}{ext}")
-                with open(path, "wb") as f:
-                    f.write(img.read())
-                image_paths.append(path)
+        # إذا فيه سكربت، نحوله لصوت
+        if script:
+            tts_path = os.path.join(temp_dir, "tts_audio.mp3")
+            tts = gTTS(text=script, lang='en')  # ممكن تغير 'en' لـ 'ar'
+            tts.save(tts_path)
+            audio_clips.append(AudioFileClip(tts_path))
+
+        # إذا فيه صوت مرفوع
+        if audio_file:
+            audio_path = os.path.join(temp_dir, audio_file.name)
+            with open(audio_path, "wb") as f:
+                f.write(audio_file.read())
+            audio_clips.append(AudioFileClip(audio_path))
+
+        # دمج كل المقاطع الصوتية في مقطع واحد
+        if audio_clips:
+            final_audio = CompositeAudioClip(audio_clips)
         else:
-            st.warning("No images uploaded, video will only play audio.")
+            final_audio = None
 
-        # إنشاء ملف قائمة الصور لـ FFmpeg
-        list_file = os.path.join(temp_dir, "images.txt")
-        with open(list_file, "w") as f:
-            for path in image_paths:
-                f.write(f"file '{path}'\n")
-                f.write("duration 2\n")
-            if image_paths:
-                f.write(f"file '{image_paths[-1]}'\n")
+        # إنشاء الفيديو من الصور
+        video_clips = []
+        if images:
+            for img in images:
+                img_path = os.path.join(temp_dir, img.name)
+                with open(img_path, "wb") as f:
+                    f.write(img.read())
+                clip = ImageClip(img_path).set_duration(2)  # كل صورة مدتها 2 ثانية
+                video_clips.append(clip)
 
-        output = os.path.join(temp_dir, "output.mp4")
-
-        # تشغيل FFmpeg
-        try:
-            if image_paths:
-                subprocess.run(
-                    ["ffmpeg", "-f", "concat", "-safe", "0", "-i", list_file, "-i", audio_path,
-                     "-c:v", "libx264", "-c:a", "aac", "-shortest", output],
-                    check=True
-                )
-                st.success("Video generated successfully! 🎉")
-                st.video(output)
+            final_clip = concatenate_videoclips(video_clips)
+            if final_audio:
+                final_clip = final_clip.set_audio(final_audio)
+            output_path = os.path.join(temp_dir, "output.mp4")
+            final_clip.write_videofile(output_path, codec="libx264", audio_codec="aac")
+            st.success("Video generated successfully! 🎉")
+            st.video(output_path)
+        else:
+            # لو مفيش صور، بس نعطي الصوت
+            if final_audio:
+                st.audio(final_audio)
             else:
-                st.audio(audio_path)  # لو مفيش صور، يعرض بس الصوت
-        except subprocess.CalledProcessError:
-            st.error("Error generating video. Make sure FFmpeg is installed and in PATH.")
-    else:
-        st.warning("Please enter a script or upload images first!")
+                st.warning("No media to generate!")
