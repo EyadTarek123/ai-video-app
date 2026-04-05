@@ -6,3 +6,4 @@ decorator
 tqdm
 setuptools
 wheel
+python-3.10
