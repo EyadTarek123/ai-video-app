@@ -1,36 +1,36 @@
 import streamlit as st
-from moviepy.editor import ImageClip, concatenate_videoclips, AudioFileClip
+import os
 import tempfile
 
-st.title("AI Video Generator 🎬")
+st.title("Simple Video Generator 🎬")
 
-images = st.file_uploader("Upload Images", type=["jpg", "png"], accept_multiple_files=True)
-audio_file = st.file_uploader("Upload Audio", type=["mp3"])
+images = st.file_uploader("Upload Images", accept_multiple_files=True)
+audio = st.file_uploader("Upload Audio")
 
-if st.button("Generate Video"):
-    if images and audio_file:
-        temp_audio = tempfile.NamedTemporaryFile(delete=False)
-        temp_audio.write(audio_file.read())
-        audio = AudioFileClip(temp_audio.name)
+if st.button("Generate"):
+    if images and audio:
+        temp_dir = tempfile.mkdtemp()
 
-        duration_per_image = audio.duration / len(images)
+        image_paths = []
+        for i, img in enumerate(images):
+            path = os.path.join(temp_dir, f"{i}.jpg")
+            with open(path, "wb") as f:
+                f.write(img.read())
+            image_paths.append(path)
 
-        clips = []
-        for img in images:
-            temp_img = tempfile.NamedTemporaryFile(delete=False)
-            temp_img.write(img.read())
+        audio_path = os.path.join(temp_dir, "audio.mp3")
+        with open(audio_path, "wb") as f:
+            f.write(audio.read())
 
-            clip = ImageClip(temp_img.name).set_duration(duration_per_image)
-            clip = clip.resize(lambda t: 1 + 0.02*t)
-            clips.append(clip)
+        # create file list
+        list_file = os.path.join(temp_dir, "images.txt")
+        with open(list_file, "w") as f:
+            for path in image_paths:
+                f.write(f"file '{path}'\n")
+                f.write("duration 2\n")
 
-        final = concatenate_videoclips(clips)
-        final = final.set_audio(audio)
+        output = os.path.join(temp_dir, "output.mp4")
 
-        output_path = "output.mp4"
-        final.write_videofile(output_path, fps=24)
+        os.system(f"ffmpeg -f concat -safe 0 -i {list_file} -i {audio_path} -c:v libx264 -c:a aac -shortest {output}")
 
-        st.success("Video Generated!")
-        st.video(output_path)
-    else:
-        st.error("Upload images and audio first!")
+        st.video(output)
