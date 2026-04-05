@@ -1,3 +1,4 @@
-streamlit
-gtts
 moviepy
+imageio
+imageio-ffmpeg
+numpy
