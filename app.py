@@ -1,32 +1,37 @@
 import streamlit as st
 import os
 import tempfile
-import subprocess  # أفضل من os.system
+import subprocess
+from gtts import gTTS  # لتحويل النص لصوت
 
-st.title("Simple Video Generator 🎬")
+st.title("Text-to-Video Generator 🎬")
 
-# رفع الملفات
-images = st.file_uploader("Upload Images", accept_multiple_files=True, type=["jpg","png","jpeg"])
-audio = st.file_uploader("Upload Audio", type=["mp3","wav"])
+# رفع الصور (اختياري)
+images = st.file_uploader("Upload Images (optional)", accept_multiple_files=True, type=["jpg","png","jpeg"])
 
-if st.button("Generate"):
-    if images and audio:
+# إدخال النص
+script = st.text_area("Write your script here:")
+
+if st.button("Generate Video"):
+    if script or images:
         temp_dir = tempfile.mkdtemp()
 
-        # حفظ الصور مؤقتًا
-        image_paths = []
-        for i, img in enumerate(images):
-            ext = os.path.splitext(img.name)[1]  # يخلي الامتداد الأصلي
-            path = os.path.join(temp_dir, f"{i}{ext}")
-            with open(path, "wb") as f:
-                f.write(img.read())
-            image_paths.append(path)
+        # تحويل النص لصوت
+        audio_path = os.path.join(temp_dir, "audio.mp3")
+        tts = gTTS(text=script, lang='en')  # ممكن تغير 'en' لـ 'ar' للعربي
+        tts.save(audio_path)
 
-        # حفظ الصوت مؤقتًا
-        audio_ext = os.path.splitext(audio.name)[1]
-        audio_path = os.path.join(temp_dir, f"audio{audio_ext}")
-        with open(audio_path, "wb") as f:
-            f.write(audio.read())
+        # حفظ الصور
+        image_paths = []
+        if images:
+            for i, img in enumerate(images):
+                ext = os.path.splitext(img.name)[1]
+                path = os.path.join(temp_dir, f"{i}{ext}")
+                with open(path, "wb") as f:
+                    f.write(img.read())
+                image_paths.append(path)
+        else:
+            st.warning("No images uploaded, video will only play audio.")
 
         # إنشاء ملف قائمة الصور لـ FFmpeg
         list_file = os.path.join(temp_dir, "images.txt")
@@ -34,21 +39,24 @@ if st.button("Generate"):
             for path in image_paths:
                 f.write(f"file '{path}'\n")
                 f.write("duration 2\n")
-            # إعادة كتابة الصورة الأخيرة لضمان طول الفيديو
-            f.write(f"file '{image_paths[-1]}'\n")
+            if image_paths:
+                f.write(f"file '{image_paths[-1]}'\n")
 
         output = os.path.join(temp_dir, "output.mp4")
 
-        # تشغيل FFmpeg بطريقة أكثر أمانًا
+        # تشغيل FFmpeg
         try:
-            subprocess.run(
-                ["ffmpeg", "-f", "concat", "-safe", "0", "-i", list_file, "-i", audio_path,
-                 "-c:v", "libx264", "-c:a", "aac", "-shortest", output],
-                check=True
-            )
-            st.success("Video generated successfully! 🎉")
-            st.video(output)
+            if image_paths:
+                subprocess.run(
+                    ["ffmpeg", "-f", "concat", "-safe", "0", "-i", list_file, "-i", audio_path,
+                     "-c:v", "libx264", "-c:a", "aac", "-shortest", output],
+                    check=True
+                )
+                st.success("Video generated successfully! 🎉")
+                st.video(output)
+            else:
+                st.audio(audio_path)  # لو مفيش صور، يعرض بس الصوت
         except subprocess.CalledProcessError:
             st.error("Error generating video. Make sure FFmpeg is installed and in PATH.")
     else:
-        st.warning("Please upload both images and audio first!")
+        st.warning("Please enter a script or upload images first!")
