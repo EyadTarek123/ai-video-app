@@ -4,3 +4,5 @@ imageio-ffmpeg==0.4.8
 numpy
 decorator
 tqdm
+setuptools
+wheel
