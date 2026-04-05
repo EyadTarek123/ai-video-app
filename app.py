@@ -20,21 +20,21 @@ if st.button("Generate Video"):
         # إعداد الصوت النهائي
         audio_clips = []
 
-        # إذا فيه سكربت، نحوله لصوت
+        # تحويل النص لصوت إذا فيه script
         if script:
             tts_path = os.path.join(temp_dir, "tts_audio.mp3")
             tts = gTTS(text=script, lang='en')  # ممكن تغير 'en' لـ 'ar'
             tts.save(tts_path)
             audio_clips.append(AudioFileClip(tts_path))
 
-        # إذا فيه صوت مرفوع
+        # إضافة الصوت المرفوع لو موجود
         if audio_file:
             audio_path = os.path.join(temp_dir, audio_file.name)
             with open(audio_path, "wb") as f:
                 f.write(audio_file.read())
             audio_clips.append(AudioFileClip(audio_path))
 
-        # دمج كل المقاطع الصوتية في مقطع واحد
+        # دمج كل المقاطع الصوتية
         if audio_clips:
             final_audio = CompositeAudioClip(audio_clips)
         else:
@@ -47,7 +47,7 @@ if st.button("Generate Video"):
                 img_path = os.path.join(temp_dir, img.name)
                 with open(img_path, "wb") as f:
                     f.write(img.read())
-                clip = ImageClip(img_path).set_duration(2)  # كل صورة مدتها 2 ثانية
+                clip = ImageClip(img_path).set_duration(2)
                 video_clips.append(clip)
 
             final_clip = concatenate_videoclips(video_clips)
