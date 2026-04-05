@@ -1,48 +1,36 @@
-import tkinter as tk
-from tkinter import filedialog
+import streamlit as st
 from moviepy.editor import ImageClip, concatenate_videoclips, AudioFileClip
+import tempfile
 
-images = []
-audio_path = ""
+st.title("AI Video Generator 🎬")
 
-def add_images():
-    global images
-    files = filedialog.askopenfilenames(filetypes=[("Images", "*.jpg *.png")])
-    images = list(files)
-    print("Images added:", images)
+images = st.file_uploader("Upload Images", type=["jpg", "png"], accept_multiple_files=True)
+audio_file = st.file_uploader("Upload Audio", type=["mp3"])
 
-def add_audio():
-    global audio_path
-    file = filedialog.askopenfilename(filetypes=[("Audio", "*.mp3")])
-    audio_path = file
-    print("Audio added:", audio_path)
+if st.button("Generate Video"):
+    if images and audio_file:
+        temp_audio = tempfile.NamedTemporaryFile(delete=False)
+        temp_audio.write(audio_file.read())
+        audio = AudioFileClip(temp_audio.name)
 
-def generate_video():
-    if not images or not audio_path:
-        print("Add images and audio first!")
-        return
+        duration_per_image = audio.duration / len(images)
 
-    audio = AudioFileClip(audio_path)
-    duration_per_image = audio.duration / len(images)
+        clips = []
+        for img in images:
+            temp_img = tempfile.NamedTemporaryFile(delete=False)
+            temp_img.write(img.read())
 
-    clips = []
-    for img in images:
-        clip = ImageClip(img).set_duration(duration_per_image)
-        clip = clip.resize(lambda t: 1 + 0.02*t)  # zoom effect
-        clips.append(clip)
+            clip = ImageClip(temp_img.name).set_duration(duration_per_image)
+            clip = clip.resize(lambda t: 1 + 0.02*t)
+            clips.append(clip)
 
-    final = concatenate_videoclips(clips)
-    final = final.set_audio(audio)
+        final = concatenate_videoclips(clips)
+        final = final.set_audio(audio)
 
-    final.write_videofile("output.mp4", fps=24)
-    print("Video created!")
+        output_path = "output.mp4"
+        final.write_videofile(output_path, fps=24)
 
-# GUI
-root = tk.Tk()
-root.title("AI Video Generator")
-
-tk.Button(root, text="Add Images", command=add_images).pack(pady=5)
-tk.Button(root, text="Add Audio", command=add_audio).pack(pady=5)
-tk.Button(root, text="Generate Video", command=generate_video).pack(pady=10)
-
-root.mainloop()
+        st.success("Video Generated!")
+        st.video(output_path)
+    else:
+        st.error("Upload images and audio first!")
