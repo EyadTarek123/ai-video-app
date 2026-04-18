@@ -2,50 +2,31 @@ import streamlit as st
 from gtts import gTTS
 import tempfile
 import os
-from pydub import AudioSegment
-st.title("🎬 AI Video Generator (Text + Images + Voice)")
 
-# Inputs
+st.title("🎬 Simple AI Video Generator")
+
 images = st.file_uploader("Upload Images", accept_multiple_files=True, type=["jpg","png","jpeg"])
-script = st.text_area("Write your script here")
-duration = st.slider("Video Duration (seconds)", 5, 180, 30)  # max 3 minutes
+script = st.text_area("Write your script")
+duration = st.slider("مدة الفيديو (ثواني)", 5, 180, 30)
 
-if st.button("Generate Video"):
+if st.button("Generate"):
     if not script:
-        st.warning("Please enter a script!")
+        st.warning("اكتب script الأول")
     else:
         temp_dir = tempfile.mkdtemp()
 
-        # 🔊 Create Voice from script
+        # إنشاء الصوت
         tts_path = os.path.join(temp_dir, "voice.mp3")
-        tts = gTTS(text=script, lang='ar')  # غيرها لـ 'en' لو عايز
+        tts = gTTS(text=script, lang='ar')
         tts.save(tts_path)
 
-        st.success("Voice generated!")
         st.audio(tts_path)
 
-        # 🎧 Get audio duration
-       
-
-        # 🖼️ Handle images timing
+        # عرض الصور
         if images:
-            st.subheader("🎞️ Video Preview")
-
-            # عدد الصور
-            num_images = len(images)
-
-            # مدة عرض كل صورة
-            img_duration = max(1, duration // num_images)
+            st.subheader("Preview")
+            img_duration = max(1, duration // len(images))
 
             for img in images:
                 st.image(img, use_column_width=True)
-                st.write(f"⏱ Showing for {img_duration} sec")
-
-        # 📊 Info
-        st.info(f"""
-        🎤 Audio Duration: {round(audio_duration, 2)} sec  
-        🎬 Selected Video Duration: {duration} sec  
-        🖼️ Images: {len(images) if images else 0}
-        """)
-
-        st.success("✅ Done! (Preview mode)")
+                st.write(f"⏱ {img_duration} sec")
