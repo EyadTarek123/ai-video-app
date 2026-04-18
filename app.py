@@ -26,8 +26,7 @@ if st.button("Generate Video"):
         st.audio(tts_path)
 
         # 🎧 Get audio duration
-        audio = AudioSegment.from_file(tts_path)
-        audio_duration = len(audio) / 1000  # seconds
+       from pydub import AudioSegment# seconds
 
         # 🖼️ Handle images timing
         if images:
