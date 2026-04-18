@@ -2,52 +2,49 @@ import streamlit as st
 from gtts import gTTS
 import tempfile
 import os
-from PIL import Image
+from moviepy.editor import ImageClip, AudioFileClip, concatenate_videoclips
 
-st.title("🎬 AI Video Generator Pro")
+st.title("🎬 AI Video Generator (REAL MP4)")
 
-# Inputs
 images = st.file_uploader("Upload Images", accept_multiple_files=True, type=["jpg","png","jpeg"])
-audio_file = st.file_uploader("Upload Audio (optional)", type=["mp3","wav"])
 script = st.text_area("Write Script")
-gesture_prompt = st.text_area("🤖 Hand Gesture Prompt (for AI animation)")
-
+audio_file = st.file_uploader("Upload Audio (optional)", type=["mp3","wav"])
 duration = st.slider("Video Duration (sec)", 5, 180, 30)
 
-if st.button("Generate"):
-    temp_dir = tempfile.mkdtemp()
+if st.button("Generate Video"):
+    if not images:
+        st.warning("لازم ترفع صور")
+    else:
+        temp_dir = tempfile.mkdtemp()
 
-    # 🔊 Audio (script → voice)
-    audio_path = None
-    if script:
-        audio_path = os.path.join(temp_dir, "voice.mp3")
-        tts = gTTS(script, lang="ar")
-        tts.save(audio_path)
-        st.audio(audio_path)
+        # 🔊 Create voice if script exists
+        audio_path = None
+        if script:
+            audio_path = os.path.join(temp_dir, "voice.mp3")
+            tts = gTTS(script, lang="ar")
+            tts.save(audio_path)
 
-    # 🎧 Uploaded audio
-    if audio_file:
-        uploaded_audio = os.path.join(temp_dir, audio_file.name)
-        with open(uploaded_audio, "wb") as f:
-            f.write(audio_file.read())
-        st.audio(uploaded_audio)
+        # 🖼️ Create video clips
+        clips = []
+        per_img = duration / len(images)
 
-    # 🖼️ "Animated-style preview"
-    if images:
-        st.subheader("🎞️ Video Preview (Simulated Animation)")
+        for img in images:
+            img_path = os.path.join(temp_dir, img.name)
+            with open(img_path, "wb") as f:
+                f.write(img.read())
 
-        img_duration = max(1, duration // len(images))
+            clip = ImageClip(img_path).set_duration(per_img)
+            clips.append(clip)
 
-        for i, img in enumerate(images):
-            st.image(img, use_column_width=True)
+        video = concatenate_videoclips(clips)
 
-            # 👇 fake animation effect (important fix)
-            st.markdown(f"🎬 Frame {i+1}/{len(images)}")
-            st.markdown(f"⏱ Duration: {img_duration}s")
+        # 🔊 Add audio
+        if audio_path:
+            audio = AudioFileClip(audio_path)
+            video = video.set_audio(audio)
 
-    # 🤖 Gesture Prompt
-    if gesture_prompt:
-        st.subheader("🖐 AI Gesture Prompt")
-        st.info(gesture_prompt)
+        output_path = os.path.join(temp_dir, "output.mp4")
+        video.write_videofile(output_path, fps=24)
 
-    st.success("✅ Ready (Preview Mode)")
+        st.success("✅ Video Created!")
+        st.video(output_path)
