@@ -3,7 +3,6 @@ from gtts import gTTS
 import tempfile
 import os
 from pydub import AudioSegment
-
 st.title("🎬 AI Video Generator (Text + Images + Voice)")
 
 # Inputs
@@ -26,7 +25,7 @@ if st.button("Generate Video"):
         st.audio(tts_path)
 
         # 🎧 Get audio duration
-       from pydub import AudioSegment# seconds
+       
 
         # 🖼️ Handle images timing
         if images:
